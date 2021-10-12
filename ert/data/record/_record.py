@@ -14,6 +14,7 @@ from typing import (
     Tuple,
     Union,
     cast,
+    Iterator,
 )
 
 from beartype import beartype
@@ -52,6 +53,7 @@ class RecordType(str, Enum):
     MAPPING_INT_FLOAT = "MAPPING_INT_FLOAT"
     MAPPING_STR_FLOAT = "MAPPING_STR_FLOAT"
     BYTES = "BYTES"
+    STORE = "STORE"
 
 
 class Record(ABC):
@@ -64,6 +66,43 @@ class Record(ABC):
     @abstractmethod
     def record_type(self) -> RecordType:
         pass
+
+
+class RecordStore(Record):
+    def __init__(self, record_store: Mapping[str, Record]) -> None:
+        self._record_type = RecordType.STORE
+        self._record_store: Mapping[str, Record] = record_store
+
+        if len(self.get_recordstore_types()) > 1:
+            raise RecordValidationError(
+                f"The record types needs to be uniform, but got mixture {self.get_recordstore_types()}"
+            )
+
+    def get_recordstore_types(self) -> List[RecordType]:
+        _record_types: set[RecordType] = set()
+        for record_name in self:
+            if self[record_name].record_type == RecordType.STORE:
+                _record_types |= self[record_name].get_record_type()
+            else:
+                _record_types |= {self[record_name].record_type}
+        return list(_record_types)
+
+    @property
+    def data(self) -> None:
+        return None
+
+    @property
+    def record_type(self) -> RecordType:
+        return RecordType.STORE
+
+    def __iter__(self) -> Iterator[Record]:  # type: ignore
+        return iter(self._record_store)
+
+    def __getitem__(self, key: str) -> str:
+        return self._record_store[key]
+
+    def __len__(self) -> int:
+        return len(self._record_store)
 
 
 class BlobRecord(Record):

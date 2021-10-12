@@ -1,4 +1,5 @@
 from ert.data.record._record import (
+    RecordStore,
     BlobRecord,
     load_collection_from_file,
     NumericalRecord,
@@ -26,6 +27,7 @@ from .record._transformation import (
 )
 
 __all__ = (
+    "RecordStore",
     "BlobRecord",
     "InMemoryRecordTransmitter",
     "load_collection_from_file",
