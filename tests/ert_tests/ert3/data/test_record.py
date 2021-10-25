@@ -165,6 +165,52 @@ def test_valid_uniform_ensemble_record(raw_ensrec, raw_ensrec_to_records, record
         assert record is ensrecord.records[0]
 
 
+@pytest.mark.parametrize(
+    ("record_store"),
+    (
+        {
+            "key_A:OP1": ert.data.BlobRecord(data=b"\xF0\x9F\xA6\x89"),
+            "key_B:OP1": ert.data.BlobRecord(data=b"\xF0\x9F\xA6\x89"),
+        },
+        {
+            "key_A:OP2": ert.data.NumericalRecord(data={"a": 0, "b": 1, "c": 2}),
+            "key_B:OP2": ert.data.NumericalRecord(
+                data={"a": 0, "b": 1, "c": 2},
+            ),
+            "key_C:OP2": ert.data.NumericalRecord(
+                data={"a": 0, "b": 1, "c": 2},
+            ),
+        },
+    ),
+)
+def test_valid_recordstore_creation(record_store):
+    record = ert.data.RecordStore(record_store=record_store)
+    assert record.record_type == ert.data.RecordType.STORE
+
+
+@pytest.mark.parametrize(
+    ("record_store"),
+    (
+        {
+            "key_A:OP1": ert.data.BlobRecord(data=b"\xF0\x9F\xA6\x89"),
+            "key_B:OP1": ert.data.NumericalRecord(data={"a": 0, "b": 1, "c": 2}),
+        },
+        {
+            "key_A:OP2": ert.data.NumericalRecord(data={"a": 0, "b": 1, "c": 2}),
+            "key_B:OP2": ert.data.NumericalRecord(
+                data=(0, 2, 4),
+            ),
+            "key_C:OP2": ert.data.NumericalRecord(
+                data={"a": 0, "b": 1, "c": 2},
+            ),
+        },
+    ),
+)
+def test_invalid_recordstore_creation(record_store):
+    with pytest.raises(ert.data.RecordValidationError):
+        ert.data.RecordStore(record_store=record_store)
+
+
 def test_ensemble_record_not_empty():
     with pytest.raises(ValueError):
         ert.data.RecordCollection(records=tuple())
