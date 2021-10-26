@@ -15,6 +15,8 @@ from typing import (
     Union,
     cast,
     Iterator,
+    Generic,
+    TypeVar,
 )
 
 from beartype import beartype
@@ -29,7 +31,12 @@ numerical_record_data = Union[
     Dict[int, number],
 ]
 blob_record_data = bytes
-record_data = Union[numerical_record_data, blob_record_data]
+record_data = Union[
+    numerical_record_data,
+    blob_record_data,
+    Dict[str, numerical_record_data],
+    Dict[str, blob_record_data],
+]
 record_collection = Tuple["Record", ...]
 RecordIndex = Union[Tuple[int, ...], Tuple[str, ...]]
 
@@ -179,38 +186,36 @@ class NumericalRecord(Record):
         return False
 
 
-class RecordStore(Record):
-    def __init__(self, record_store: Mapping[str, Record]) -> None:
+RecordGen = TypeVar("RecordGen", bound=Record)
+
+store_record_type = Union[RecordGen, "RecordStore"]
+leaf_record_type = Dict[str, RecordGen]
+
+
+class RecordStore(Generic[RecordGen]):
+    def __init__(self, record_store: Dict[str, store_record_type]) -> None:
         self._record_type = RecordType.STORE
-        self._record_store: Mapping[str, Record] = record_store
+        self._record_store: Dict[str, store_record_type] = record_store
+        _ = self.get_leaf_records()
 
-        store_types = self.get_recordstore_types()
-        if len(store_types) > 1:
-            raise RecordValidationError(
-                f"The record types needs to be uniform, but got {store_types}!"
-            )
-
-    def get_recordstore_types(self) -> List[RecordType]:
-        _record_types: set[RecordType] = set()
+    @beartype
+    def get_leaf_records(self) -> leaf_record_type:
+        _leaf_records: leaf_record_type = dict()
         for record_name in self:
-            if self[record_name].record_type == RecordType.STORE:
-                _record_types |= self[record_name].get_record_type()
+            _record = self[record_name]
+            if isinstance(_record, RecordStore):
+                _leaf_records.update(_record.get_leaf_records())
             else:
-                _record_types |= {self[record_name].record_type}
-        return list(_record_types)
-
-    def get_leaf_records(self) -> Mapping[str, Record]:
-        _leaf_records: Mapping[str, Record] = dict()
-        for record_name in self:
-            if self[record_name].record_type == RecordType.STORE:
-                _leaf_records.update(self[record_name].get_leaf_records())
-            else:
-                _leaf_records[record_name] = self[record_name]
+                _leaf_records[record_name] = _record
         return _leaf_records
 
     @property
-    def data(self) -> None:
-        return None
+    def data(self) -> record_data:
+        _leaf_records: leaf_record_type = self.get_leaf_records()
+        return {
+            record_name: _leaf_records[record_name].data
+            for record_name in _leaf_records
+        }
 
     @property
     def record_type(self) -> RecordType:
@@ -219,7 +224,7 @@ class RecordStore(Record):
     def __iter__(self) -> Iterator[str]:
         return iter(self._record_store)
 
-    def __getitem__(self, key: str) -> Record:
+    def __getitem__(self, key: str) -> store_record_type:
         return self._record_store[key]
 
     def __len__(self) -> int:
