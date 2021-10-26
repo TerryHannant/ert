@@ -98,7 +98,7 @@ class RecordStore(Record):
     def __iter__(self) -> Iterator[Record]:  # type: ignore
         return iter(self._record_store)
 
-    def __getitem__(self, key: str) -> str:
+    def __getitem__(self, key: str) -> Record:
         return self._record_store[key]
 
     def __len__(self) -> int:
