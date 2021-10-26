@@ -68,43 +68,6 @@ class Record(ABC):
         pass
 
 
-class RecordStore(Record):
-    def __init__(self, record_store: Mapping[str, Record]) -> None:
-        self._record_type = RecordType.STORE
-        self._record_store: Mapping[str, Record] = record_store
-
-        if len(self.get_recordstore_types()) > 1:
-            raise RecordValidationError(
-                f"The record types needs to be uniform, but got mixture {self.get_recordstore_types()}"
-            )
-
-    def get_recordstore_types(self) -> List[RecordType]:
-        _record_types: set[RecordType] = set()
-        for record_name in self:
-            if self[record_name].record_type == RecordType.STORE:
-                _record_types |= self[record_name].get_record_type()
-            else:
-                _record_types |= {self[record_name].record_type}
-        return list(_record_types)
-
-    @property
-    def data(self) -> None:
-        return None
-
-    @property
-    def record_type(self) -> RecordType:
-        return RecordType.STORE
-
-    def __iter__(self) -> Iterator[Record]:  # type: ignore
-        return iter(self._record_store)
-
-    def __getitem__(self, key: str) -> Record:
-        return self._record_store[key]
-
-    def __len__(self) -> int:
-        return len(self._record_store)
-
-
 class BlobRecord(Record):
     def __init__(self, data: blob_record_data) -> None:
         self._record_type = RecordType.BYTES
@@ -214,6 +177,53 @@ class NumericalRecord(Record):
         if isinstance(o, type(self)):
             return self.__dict__ == o.__dict__
         return False
+
+
+class RecordStore(Record):
+    def __init__(self, record_store: Mapping[str, Record]) -> None:
+        self._record_type = RecordType.STORE
+        self._record_store: Mapping[str, Record] = record_store
+
+        store_types = self.get_recordstore_types()
+        if len(store_types) > 1:
+            raise RecordValidationError(
+                f"The record types needs to be uniform, but got {store_types}!"
+            )
+
+    def get_recordstore_types(self) -> List[RecordType]:
+        _record_types: set[RecordType] = set()
+        for record_name in self:
+            if self[record_name].record_type == RecordType.STORE:
+                _record_types |= self[record_name].get_record_type()
+            else:
+                _record_types |= {self[record_name].record_type}
+        return list(_record_types)
+
+    def get_leaf_records(self) -> Mapping[str, Record]:
+        _leaf_records: Mapping[str, Record] = dict()
+        for record_name in self:
+            if self[record_name].record_type == RecordType.STORE:
+                _leaf_records.update(self[record_name].get_leaf_records())
+            else:
+                _leaf_records[record_name] = self[record_name]
+        return _leaf_records
+
+    @property
+    def data(self) -> None:
+        return None
+
+    @property
+    def record_type(self) -> RecordType:
+        return RecordType.STORE
+
+    def __iter__(self) -> Iterator[str]:
+        return iter(self._record_store)
+
+    def __getitem__(self, key: str) -> Record:
+        return self._record_store[key]
+
+    def __len__(self) -> int:
+        return len(self._record_store)
 
 
 class RecordCollectionType(str, Enum):
