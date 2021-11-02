@@ -1,6 +1,9 @@
 import os
+import sys
 from pathlib import Path
 from typing import Union, Optional, Set
+
+import yaml
 
 import ert3
 import ert
@@ -60,3 +63,38 @@ def initialize(path: Union[str, Path]) -> None:
 
 def load(path: Union[str, Path]) -> Optional[Path]:
     return _locate_root(path)
+
+
+def load_ensemble_config(
+    workspace: Path, experiment_name: str
+) -> ert3.config.EnsembleConfig:
+    ensemble_config = (
+        workspace / ert3.workspace.EXPERIMENTS_BASE / experiment_name / "ensemble.yml"
+    )
+    with open(ensemble_config, encoding="utf-8") as f:
+        config_dict = yaml.safe_load(f)
+    return ert3.config.load_ensemble_config(config_dict)
+
+
+def load_stages_config(workspace: Path) -> ert3.config.StagesConfig:
+    with open(workspace / "stages.yml", encoding="utf-8") as f:
+        config_dict = yaml.safe_load(f)
+    sys.path.append(str(workspace))
+    return ert3.config.load_stages_config(config_dict)
+
+
+def load_experiment_config(
+    workspace: Path, experiment_name: str
+) -> ert3.config.ExperimentConfig:
+    experiment_config = (
+        workspace / ert3.workspace.EXPERIMENTS_BASE / experiment_name / "experiment.yml"
+    )
+    with open(experiment_config, encoding="utf-8") as f:
+        config_dict = yaml.safe_load(f)
+    return ert3.config.load_experiment_config(config_dict)
+
+
+def load_parameters_config(workspace: Path) -> ert3.config.ParametersConfig:
+    with open(workspace / "parameters.yml", encoding="utf-8") as f:
+        config_dict = yaml.safe_load(f)
+    return ert3.config.load_parameters_config(config_dict)
