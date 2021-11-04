@@ -85,5 +85,5 @@ def test_workspace_experiment_has_run(tmpdir, ert_storage):
         responses=[],
     )
 
-    assert ert3.workspace.experiment_has_run(tmpdir, "test1")
-    assert not ert3.workspace.experiment_has_run(tmpdir, "test2")
+    assert "test1" in ert.storage.get_experiment_names(tmpdir)
+    assert "test2" not in ert.storage.get_experiment_names(tmpdir)
